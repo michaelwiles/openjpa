@@ -24,23 +24,19 @@ import javax.persistence.criteria.ParameterExpression;
 
 import org.apache.openjpa.kernel.exps.ExpressionFactory;
 import org.apache.openjpa.kernel.exps.Value;
-import org.apache.openjpa.lib.util.OrderedMap;
 import org.apache.openjpa.util.InternalException;
 
 /**
- * Parameter of a criteria query.
- * <br>
- * A parameter in CriteriaQuery is always a named parameter but can be constructed with a null name.
- * Positional parameters are not allowed in CriteraQuery.
- * <br>
- *
- * @author Pinaki Poddar
- * @author Fay wang
+ * Parameter of a criteria query. <br>
+ * A parameter in CriteriaQuery is always a named parameter but can be
+ * constructed with a null name. Positional parameters are not allowed in
+ * CriteraQuery. <br>
  *
  * @param <T> the type of value held by this parameter.
+ * @author Pinaki Poddar
+ * @author Fay wang
  */
-class ParameterExpressionImpl<T> extends ExpressionImpl<T>
-    implements ParameterExpression<T>, BindableParameter {
+class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements ParameterExpression<T>, BindableParameter {
     private String _name;
     private int _index = 0; // index of the parameter as seen by the kernel, not position
     private Object value;
@@ -48,7 +44,7 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
     /**
      * Construct a Parameter of given expected value type and name.
      *
-     * @param cls expected value type
+     * @param cls  expected value type
      * @param name name of the parameter which can be null.
      */
     public ParameterExpressionImpl(Class<T> cls, String name) {
@@ -59,8 +55,7 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
     }
 
     /**
-     * Gets the name of this parameter.
-     * The name can be null.
+     * Gets the name of this parameter. The name can be null.
      */
     @Override
     public final String getName() {
@@ -68,8 +63,8 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
     }
 
     /**
-     * Raises an internal exception because parameters of CriteriaQuery
-     * are not positional.
+     * Raises an internal exception because parameters of CriteriaQuery are not
+     * positional.
      */
     @Override
     public final Integer getPosition() {
@@ -85,7 +80,7 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
         StringBuilder buf = new StringBuilder("ParameterExpression");
         buf.append("<" + getJavaType().getSimpleName() + ">");
         if (_name != null)
-            buf.append("('"+ _name +"')");
+            buf.append("('" + _name + "')");
 
         return buf.toString();
     }
@@ -104,29 +99,15 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
     public Value toValue(ExpressionFactory factory, CriteriaQueryImpl<?> q) {
         Class<?> clzz = getJavaType();
         Object paramKey = _name == null ? _index : _name;
-        boolean isCollectionValued  = Collection.class.isAssignableFrom(clzz);
+        boolean isCollectionValued = Collection.class.isAssignableFrom(clzz);
         org.apache.openjpa.kernel.exps.Parameter param = isCollectionValued
-            ? factory.newCollectionValuedParameter(paramKey, clzz)
-            : factory.newParameter(paramKey, clzz);
+                ? factory.newCollectionValuedParameter(paramKey, clzz)
+                : factory.newParameter(paramKey, clzz);
 
-        int index = _name != null
-            ? findIndexWithSameName(q)
-            : _index;
+        int index = _name != null ? q.getParameterTypes().indexOf(this) : _index;
         param.setIndex(index);
 
         return param;
-    }
-
-    private int findIndexWithSameName(CriteriaQueryImpl<?> q) {
-        OrderedMap<Object, Class<?>> parameterTypes = q.getParameterTypes();
-        int i = 0;
-        for (Object k : parameterTypes.keySet()) {
-            if (paramEquals(k)) {
-                return i;
-            }
-            i++;
-        }
-        return -1;
     }
 
     @Override
@@ -139,7 +120,8 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
         return getJavaType();
     }
 
-    public boolean paramEquals(Object o) {
+    @Override
+    public boolean equals(Object o) {
         if (this == o)
             return true;
 
@@ -155,22 +137,23 @@ class ParameterExpressionImpl<T> extends ExpressionImpl<T>
         if (_name == null && _index != that._index)
             return false;
 
-        if (getParameterType() != ((ParameterExpressionImpl<?>) o).getParameterType() )
+        if (getParameterType() != ((ParameterExpressionImpl<?>) o).getParameterType())
             return false;
 
-        return value != null ? value.equals(that.value) : that.value == null;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
+        if (_name == null && that._name == null) {
+            return super.equals(o);
+        } else {
+            return _name.equals(that._name);
         }
-        return false;
     }
 
     @Override
     public int hashCode() {
-        return super.hashCode();
+        int result = _name != null ? _name.hashCode() : 0;
+        if (_name == null) {
+            result = 31 * result + super.hashCode();
+        }
+        result = 31 * result + (getParameterType() != null ? getParameterType().hashCode() : 0);
+        return result;
     }
 }

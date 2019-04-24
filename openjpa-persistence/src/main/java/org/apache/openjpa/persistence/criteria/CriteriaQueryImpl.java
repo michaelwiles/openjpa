@@ -54,7 +54,7 @@ import org.apache.openjpa.persistence.meta.Types;
 
 /**
  * Criteria query implementation.
- *
+ * <p>
  * Collects clauses of criteria query (e.g. select projections, from/join,
  * where conditions, order by).
  * Eventually translates these clauses to a similar form of Expression tree
@@ -62,38 +62,37 @@ import org.apache.openjpa.persistence.meta.Types;
  *
  * @author Pinaki Poddar
  * @author Fay Wang
- *
  * @since 2.0.0
  */
 class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     private static final Localizer _loc = Localizer.forPackage(CriteriaQueryImpl.class);
 
-    private final MetamodelImpl  _model;
-    private Set<Root<?>>        _roots;
-    private PredicateImpl       _where;
-    private List<Order>         _orders;
+    private final MetamodelImpl _model;
+    private Set<Root<?>> _roots;
+    private PredicateImpl _where;
+    private List<Order> _orders;
     private OrderedMap<Object, Class<?>> _params = new OrderedMap<>();
     private Selection<? extends T> _selection;
-    private List<Selection<?>>  _selections;
+    private List<Selection<?>> _selections;
     private List<Expression<?>> _groups;
-    private PredicateImpl       _having;
-    private List<Subquery<?>>   _subqueries;
-    private boolean             _distinct;
+    private PredicateImpl _having;
+    private List<Subquery<?>> _subqueries;
+    private boolean _distinct;
     private final SubqueryImpl<?> _delegator;
-    private final Class<T>      _resultClass;
-    private boolean             _compiled;
+    private final Class<T> _resultClass;
+    private boolean _compiled;
 
     // AliasContext
     private int aliasCount = 0;
     private static String ALIAS_BASE = "autoAlias";
 
-    private Map<Selection<?>,Value> _variables = new HashMap<>();
-    private Map<Selection<?>,Value> _values    = new HashMap<>();
-    private Map<Selection<?>,String> _aliases  = null;
-    private Map<Selection<?>,Value> _rootVariables = new HashMap<>();
+    private Map<Selection<?>, Value> _variables = new HashMap<>();
+    private Map<Selection<?>, Value> _values = new HashMap<>();
+    private Map<Selection<?>, String> _aliases = null;
+    private Map<Selection<?>, Value> _rootVariables = new HashMap<>();
 
     // SubqueryContext
-    private ThreadLocal<Stack<Context>> _contexts = new  ThreadLocal<Stack<Context>>(){
+    private ThreadLocal<Stack<Context>> _contexts = new ThreadLocal<Stack<Context>>() {
         @Override
         protected Stack<Context> initialValue() {
             return new Stack<>();
@@ -110,7 +109,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     /**
      * Used by a subquery to delegate to this receiver.
      *
-     * @param model the metamodel defines the scope of all persistent entity references.
+     * @param model     the metamodel defines the scope of all persistent entity references.
      * @param delegator the subquery which will delegate to this receiver.
      */
     CriteriaQueryImpl(MetamodelImpl model, SubqueryImpl<T> delegator, OrderedMap<Object, Class<?>> params) {
@@ -164,59 +163,60 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
     /**
      * Return the selection of the query
+     *
      * @return the item to be returned in the query result
      */
     @Override
     public Selection<T> getSelection() {
-        return (Selection<T>)_selection;
+        return (Selection<T>) _selection;
     }
 
     /**
      * Specify the items that are to be returned in the query result.
      * Replaces the previously specified selection(s), if any.
-     *
+     * <p>
      * The type of the result of the query execution depends on
      * the specification of the criteria query object as well as the
      * arguments to the multiselect method as follows:
-     *
+     * <p>
      * If the type of the criteria query is CriteriaQuery<Tuple>,
      * a Tuple object corresponding to the arguments of the
      * multiselect method will be instantiated and returned for
      * each row that results from the query execution.
-     *
+     * <p>
      * If the type of the criteria query is CriteriaQuery<X> for
      * some user-defined class X, then the arguments to the
      * multiselect method will be passed to the X constructor and
      * an instance of type X will be returned for each row.
      * The IllegalStateException will be thrown if a constructor
      * for the given argument types does not exist.
-     *
+     * <p>
      * If the type of the criteria query is CriteriaQuery<X[]> for
      * some class X, an instance of type X[] will be returned for
      * each row.  The elements of the array will correspond to the
      * arguments of the multiselect method.    The
      * IllegalStateException will be thrown if the arguments to the
      * multiselect method are not of type X.
-     *
+     * <p>
      * If the type of the criteria query is CriteriaQuery<Object>,
      * and only a single argument is passed to the multiselect
      * method, an instance of type Object will be returned for
      * each row.
-     *
+     * <p>
      * If the type of the criteria query is CriteriaQuery<Object>,
      * and more than one argument is passed to the multiselect
      * method, an instance of type Object[] will be instantiated
      * and returned for each row.  The elements of the array will
      * correspond to the arguments to the multiselect method.
      *
-     * @param selections  expressions specifying the items that
-     *        are returned in the query result
+     * @param selections expressions specifying the items that
+     *                   are returned in the query result
      * @return the modified query
      */
     @Override
     public CriteriaQuery<T> multiselect(Selection<?>... selections) {
         _selections = Arrays.asList(selections); // do not telescope
-        _selection  = new CompoundSelections.MultiSelection(_resultClass, selections);
+        _selection = new CompoundSelections.MultiSelection(_resultClass, selections);
         return this;
     }
 
@@ -224,18 +224,10 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
      * Registers the given parameter.
      */
     void registerParameter(ParameterExpressionImpl<?> p) {
-        for (Object k : _params.keySet()) {
-            if (p.paramEquals(k)) {
-                // If a named ParameterExpressin did already get registered
-                // with that exact name, then we do ignore it.
-                // If we do a query.setParameter("someParamName", Bla)
-                // then it must uniquely identify a Parameter.
-                return;
-            }
+        if (!_params.containsKey(p)) {
+            p.setIndex(_params.size());
+            _params.put(p, p.getJavaType());
         }
-
-        p.setIndex(_params.size());
-        _params.put(p, p.getJavaType());
     }
 
     @Override
@@ -246,6 +238,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
     /**
      * Return the selection items of the query as a list
+     *
      * @return the selection items of the query as a list
      */
     public List<Selection<?>> getSelectionList() {
@@ -279,10 +272,9 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         return this;
     }
 
-
     @Override
     public CriteriaQuery<T> having(Expression<Boolean> restriction) {
-        _having = (PredicateImpl)restriction;
+        _having = (PredicateImpl) restriction;
         return this;
     }
 
@@ -328,8 +320,9 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     /**
      * Specify the item that is to be returned in the query result.
      * Replaces the previously specified selection(s), if any.
-     * @param selection  selection specifying the item that
-     *        is to be returned in the query result
+     *
+     * @param selection selection specifying the item that
+     *                  is to be returned in the query result
      * @return the modified query
      */
     @Override
@@ -347,7 +340,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
             _where = null;
             return this;
         }
-        _where = (PredicateImpl)restriction;
+        _where = (PredicateImpl) restriction;
         return this;
     }
 
@@ -364,11 +357,10 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
     @Override
     public <X> Root<X> from(EntityType<X> entity) {
-        RootImpl<X> root = new RootImpl<>((Types.Entity<X>)entity);
+        RootImpl<X> root = new RootImpl<>((Types.Entity<X>) entity);
         addRoot(root);
         return root;
     }
-
 
     @Override
     public <X> Root<X> from(Class<X> cls) {
@@ -452,7 +444,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         _contexts.get().push(context);
         try {
             return new CriteriaExpressionBuilder().getQueryExpressions(factory, this);
-        }finally{
+        } finally {
             _contexts.remove();
         }
     }
@@ -484,12 +476,12 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
             return this;
         AbstractQuery<?> parent = _delegator.getParent();
         if (parent instanceof CriteriaQueryImpl)
-            return (CriteriaQueryImpl<?>)parent;
+            return (CriteriaQueryImpl<?>) parent;
         // parent is a SubqueryImpl
-        return ((SubqueryImpl<?>)parent).getDelegate().getAncestor();
+        return ((SubqueryImpl<?>) parent).getDelegate().getAncestor();
     }
 
-    public Map<Selection<?>,String> getAliases() {
+    public Map<Selection<?>, String> getAliases() {
         CriteriaQueryImpl<?> c = getAncestor();
         if (c._aliases == null)
             c._aliases = new HashMap<>();
@@ -501,7 +493,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
      */
     Context ctx() {
         Stack<Context> ctxt = _contexts.get();
-        return ctxt == null || ctxt.isEmpty() ? null :  ctxt.peek();
+        return ctxt == null || ctxt.isEmpty() ? null : ctxt.peek();
     }
 
     //
@@ -521,7 +513,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         alias = ALIAS_BASE + (++aliasCount);
         while (_aliases.containsValue(alias))
             alias = ALIAS_BASE + (++aliasCount);
-        ((SelectionImpl<?>)selection).setAutoAlias(alias);
+        ((SelectionImpl<?>) selection).setAutoAlias(alias);
         _aliases.put(selection, alias);
         return _aliases.get(selection);
     }
@@ -550,14 +542,14 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
                 var.setAlias(alias);
             else
                 throw new RuntimeException("Variable alias " + var.getAlias() +
-                " does not match expected selection alias " + alias);
+                                                   " does not match expected selection alias " + alias);
         }
         if (!alias.equals(path.getAlias())) {
             if (path.getAlias() == null)
                 path.setAlias(alias);
             else
                 throw new RuntimeException("Path alias " + path.getAlias() +
-                " does not match expected selection alias " + alias);
+                                                   " does not match expected selection alias " + alias);
         }
         _variables.put(node, var);
         _values.put(node, path);
@@ -596,6 +588,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     /**
      * Registers a variable for the given root expression.
      * A root expression is registered only for cross join.
+     *
      * @param root
      * @param var
      */
@@ -623,9 +616,9 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     CriteriaQueryImpl<?> getDelegatorParent() {
         AbstractQuery<?> parent = _delegator.getParent();
         if (parent instanceof CriteriaQueryImpl)
-            return ((CriteriaQueryImpl<?>)parent);
+            return ((CriteriaQueryImpl<?>) parent);
         // parent is a SubqueryImpl
-        return ((SubqueryImpl<?>)parent).getDelegate();
+        return ((SubqueryImpl<?>) parent).getDelegate();
     }
 
     @Override
@@ -645,8 +638,8 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
     protected boolean isDefaultProjection() {
         if (_selections == null) {
             return getRoots().size() == 1
-               && (getRoot().getModel().getJavaType() == _resultClass ||
-                   _resultClass == Object.class);
+                    && (getRoot().getModel().getJavaType() == _resultClass ||
+                    _resultClass == Object.class);
         }
         if (_selections.size() != 1) {
             return false;
@@ -655,7 +648,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         if (!getRoots().isEmpty() && sel == getRoot()) {
             return true;
         }
-        if ((sel instanceof From<?,?>) && ((From<?,?>)sel).isCorrelated()) {
+        if ((sel instanceof From<?, ?>) && ((From<?, ?>) sel).isCorrelated()) {
             return true;
         }
         return false;
@@ -694,7 +687,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
         if (_subqueries != null) {
             for (Subquery<?> subq : _subqueries) {
-                ((SubqueryImpl<?>)subq).getDelegate().collectParameters(visitor);
+                ((SubqueryImpl<?>) subq).getDelegate().collectParameters(visitor);
             }
         }
     }
@@ -709,10 +702,11 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         return buffer.toString().trim();
     }
 
-    void render(StringBuilder buffer, Set<Root<?>> roots, List<Join<?,?>> correlatedJoins) {
+    void render(StringBuilder buffer, Set<Root<?>> roots, List<Join<?, ?>> correlatedJoins) {
         buffer.append("SELECT ");
-        if (isDistinct()) buffer.append(" DISTINCT ");
-        buffer.append(_selection != null ? ((CriteriaExpression)_selection).asProjection(this) : "*");
+        if (isDistinct())
+            buffer.append(" DISTINCT ");
+        buffer.append(_selection != null ? ((CriteriaExpression) _selection).asProjection(this) : "*");
         buffer.append(" FROM ");
         renderRoots(buffer, roots);
         renderJoins(buffer, correlatedJoins);
@@ -734,18 +728,19 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
         buffer.append(clause);
         for (Iterator<?> i = coll.iterator(); i.hasNext(); ) {
-            buffer.append(((CriteriaExpression)i.next()).asValue(this));
-            if (i.hasNext()) buffer.append(", ");
+            buffer.append(((CriteriaExpression) i.next()).asValue(this));
+            if (i.hasNext())
+                buffer.append(", ");
         }
     }
 
-    private void renderJoins(StringBuilder buffer, Collection<Join<?,?>> joins) {
+    private void renderJoins(StringBuilder buffer, Collection<Join<?, ?>> joins) {
         if (joins == null) {
             return;
         }
 
         for (Join j : joins) {
-            buffer.append(((CriteriaExpression)j).asVariable(this)).append(" ");
+            buffer.append(((CriteriaExpression) j).asVariable(this)).append(" ");
             renderJoins(buffer, j.getJoins());
             renderFetches(buffer, j.getFetches());
         }
@@ -757,18 +752,20 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
         }
         int i = 0;
         for (Root r : roots) {
-            buffer.append(((ExpressionImpl<?>)r).asVariable(this));
-            if (++i != roots.size()) buffer.append(", ");
+            buffer.append(((ExpressionImpl<?>) r).asVariable(this));
+            if (++i != roots.size())
+                buffer.append(", ");
             renderJoins(buffer, r.getJoins());
             renderFetches(buffer, r.getFetches());
         }
     }
+
     private void renderFetches(StringBuilder buffer, Set<Fetch> fetches) {
         if (fetches == null) {
             return;
         }
         for (Fetch j : fetches) {
-            buffer.append(((ExpressionImpl<?>)j).asValue(this)).append(" ");
+            buffer.append(((ExpressionImpl<?>) j).asValue(this)).append(" ");
         }
     }
 
@@ -787,7 +784,7 @@ class CriteriaQueryImpl<T> implements OpenJPACriteriaQuery<T>, AliasContext {
 
     @Override
     public boolean equals(Object other) {
-        if(other == null) {
+        if (other == null) {
             return false;
         }
 

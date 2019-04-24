@@ -19,15 +19,7 @@
 
 package org.apache.openjpa.persistence.criteria;
 
-import java.util.List;
-
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
-
+import org.apache.openjpa.persistence.AbstractQuery;
 import org.apache.openjpa.persistence.OpenJPAEntityManager;
 import org.apache.openjpa.persistence.query.DomainObject;
 import org.apache.openjpa.persistence.query.Expression;
@@ -38,22 +30,33 @@ import org.apache.openjpa.persistence.query.QueryDefinition;
 import org.apache.openjpa.persistence.query.SelectItem;
 import org.apache.openjpa.persistence.test.SingleEMFTestCase;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Parameter;
+import javax.persistence.Query;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.ParameterExpression;
+import javax.persistence.criteria.Root;
 
 /**
  * Tests QueryDefinition via a set of example use cases from Criteria API
  * Section of Java Persistence API Version 2.0 [1].
- *
+ * <p>
  * For each use case, a corresponding JPQL String is specified. The dynamically
  * constructed QueryDefinition and JPQL are both executed and their results
  * are compared for verification. As some of the use cases employ few
  * yet unimplemented JPQL 2.0 constructs such as KEY() or INDEX() or CASE,
  * when such queries fail to execute, the JPQL String is literally compared
  * to the stringified QueryDefinition.
- *
+ * <p>
  * [1] <A href="http://jcp.org/aboutJava/communityprocess/pr/jsr317/index.html">
  * JPA API Specification Version 2.0</A>
- *
- *
  */
 public class TestCriteria extends SingleEMFTestCase {
     protected OpenJPAQueryBuilder qb;
@@ -61,10 +64,10 @@ public class TestCriteria extends SingleEMFTestCase {
 
     @Override
     public void setUp() {
-            super.setUp(CLEAR_TABLES,
+        super.setUp(CLEAR_TABLES,
                     "openjpa.DynamicEnhancementAgent", "false",
-                    "openjpa.DataCache","true",
-                    "openjpa.QueryCache","true",
+                    "openjpa.DataCache", "true",
+                    "openjpa.QueryCache", "true",
                     Account.class,
                     Address.class,
                     A.class,
@@ -101,7 +104,7 @@ public class TestCriteria extends SingleEMFTestCase {
                     TransactionHistory.class,
                     Transaction.class,
                     VideoStore.class);
-        qb = (QueryBuilderImpl)emf.getDynamicQueryBuilder();
+        qb = (QueryBuilderImpl) emf.getDynamicQueryBuilder();
         emf.createEntityManager();
     }
 
@@ -128,14 +131,14 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject o1 = qb.createQueryDefinition(Order.class);
         DomainObject o2 = o1.addRoot(Order.class);
         o1.select(o1)
-          .where(o1.get("quantity").greaterThan(o2.get("quantity"))
-            .and(o2.get("customer").get("lastName").equal("Smith"))
-            .and(o2.get("customer").get("firstName").equal("John")));
+                .where(o1.get("quantity").greaterThan(o2.get("quantity"))
+                               .and(o2.get("customer").get("lastName").equal("Smith"))
+                               .and(o2.get("customer").get("firstName").equal("John")));
 
         String jpql = "select o from Order o, Order o2" +
-                      " where o.quantity > o2.quantity" +
-                      " and o2.customer.lastName = 'Smith'" +
-                      " and o2.customer.firstName = 'John'";
+                " where o.quantity > o2.quantity" +
+                " and o2.customer.lastName = 'Smith'" +
+                " and o2.customer.firstName = 'John'";
         compare(jpql, o1);
     }
 
@@ -144,10 +147,9 @@ public class TestCriteria extends SingleEMFTestCase {
         d.leftJoinFetch("employees");
         d.where(d.get("deptNo").equal(1));
 
-
         String jpql = "select d from Department d" +
-                      " LEFT JOIN FETCH d.employees" +
-                      " where d.deptNo = 1";
+                " LEFT JOIN FETCH d.employees" +
+                " where d.deptNo = 1";
         compare(jpql, d);
     }
 
@@ -155,12 +157,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject e = qb.createQueryDefinition(Employee.class);
         DomainObject p = e.join("contactInfo").join("phones");
         e.where(e.get("contactInfo").get("address").get("zipCode")
-                .equal("95094")).select(p.get("vendor"));
-
+                        .equal("95094")).select(p.get("vendor"));
 
         String jpql = "select p.vendor from Employee e" +
-                      " JOIN e.contactInfo c JOIN c.phones p" +
-                      " where e.contactInfo.address.zipCode = '95094'";
+                " JOIN e.contactInfo c JOIN c.phones p" +
+                " where e.contactInfo.address.zipCode = '95094'";
         compare(jpql, e);
     }
 
@@ -169,12 +170,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject item = qdef.addRoot(Item.class);
         DomainObject photo = item.join("photos");
         qdef.select(item.get("name"), photo.value())
-            .where(photo.key().like("egret"));
-
+                .where(photo.key().like("egret"));
 
         String jpql = "select i.name, VALUE(p)"
-                    + " from Item i join i.photos p"
-                    + " where KEY(p) like 'egret'";
+                + " from Item i join i.photos p"
+                + " where KEY(p) like 'egret'";
         compare(jpql, qdef);
     }
 
@@ -183,25 +183,25 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject o = c.join("orders");
         DomainObject a = c.join("address");
         o.where(a.get("state").equal("CA").and(
-            a.get("county").equal("Santa Clara")));
+                a.get("county").equal("Santa Clara")));
         o
-            .select(o.get("quantity"), o.get("cost").times(1.08), a
-                .get("zipCode"));
+                .select(o.get("quantity"), o.get("cost").times(1.08), a
+                        .get("zipCode"));
 
         String jpql = "select o.quantity, o.cost*1.08, a.zipCode" +
-                      " from Customer c join c.orders o join c.address a" +
-                      " where a.state = 'CA' and a.county = 'Santa Clara'";
+                " from Customer c join c.orders o join c.address a" +
+                " where a.state = 'CA' and a.county = 'Santa Clara'";
         compare(jpql, c);
     }
 
     public void testTypeExpression() {
         DomainObject e = qb.createQueryDefinition(Employee.class);
         e.select(e.type())
-         .where(e.type().equal(Exempt.class).not());
+                .where(e.type().equal(Exempt.class).not());
 
         String jpql = "select TYPE(e)" +
-                      " from Employee e" +
-                      " where TYPE(e) <> Exempt";
+                " from Employee e" +
+                " where TYPE(e) <> Exempt";
         compare(jpql, e);
     }
 
@@ -209,11 +209,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject c = qb.createQueryDefinition(Course.class);
         DomainObject w = c.join("studentWaitList");
         c.where(c.get("name").equal("Calculus").and(w.index().equal(0)))
-         .select(w.get("name"));
+                .select(w.get("name"));
 
         String jpql = "select s.name" +
-                      " from Course c join c.studentWaitList s" +
-                      " where c.name = 'Calculus' and INDEX(s) = 0";
+                " from Course c join c.studentWaitList s" +
+                " where c.name = 'Calculus' and INDEX(s) = 0";
         compare(jpql, c);
     }
 
@@ -222,22 +222,22 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject l = o.join("lineItems");
         DomainObject c = o.join("customer");
         c.where(c.get("lastName").equal("Smith").and(c.get("firstName").
-            equal("John"))).select(l.get("price").sum());
+                equal("John"))).select(l.get("price").sum());
 
         String jpql = "select SUM(l.price)" +
-                      " from Order o join o.lineItems l JOIN o.customer c" +
-                      " where c.lastName = 'Smith' and c.firstName = 'John'";
+                " from Order o join o.lineItems l JOIN o.customer c" +
+                " where c.lastName = 'Smith' and c.firstName = 'John'";
         compare(jpql, c);
     }
 
     public void testSize() {
         DomainObject d = qb.createQueryDefinition(Department.class);
         d.where(d.get("name").equal("Sales"))
-         .select(d.get("employees").size());
+                .select(d.get("employees").size());
 
         String jpql = "select SIZE(d.employees)" +
-                      " from Department d " +
-                      " where d.name = 'Sales'";
+                " from Department d " +
+                " where d.name = 'Sales'";
         compare(jpql, d);
     }
 
@@ -245,7 +245,7 @@ public class TestCriteria extends SingleEMFTestCase {
 
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        for(int i = 0;i<50;i++)
+        for (int i = 0; i < 50; i++)
             em.persist(new Department());
         em.getTransaction().commit();
 
@@ -267,20 +267,20 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject e = qb.createQueryDefinition(Employee.class);
         e.where(e.get("department").get("name").equal("Engineering"));
         e.select(e.get("name"),
-        e.generalCase()
-        .when(e.get("rating").equal(1))
-        .then(e.get("salary").times(1.1))
-        .when(e.get("rating").equal(2))
-        .then(e.get("salary").times(1.2))
-        .elseCase(e.get("salary").times(1.01)));
+                 e.generalCase()
+                         .when(e.get("rating").equal(1))
+                         .then(e.get("salary").times(1.1))
+                         .when(e.get("rating").equal(2))
+                         .then(e.get("salary").times(1.2))
+                         .elseCase(e.get("salary").times(1.01)));
 
         String jpql = "SELECT e.name,"
-                    + " CASE WHEN e.rating = 1 THEN e.salary * 1.1"
-                    + " WHEN e.rating = 2 THEN e.salary * 1.2"
-                    + " ELSE e.salary * 1.01"
-                    + " END"
-                    + " FROM Employee e"
-                    + " WHERE e.department.name = 'Engineering'";
+                + " CASE WHEN e.rating = 1 THEN e.salary * 1.1"
+                + " WHEN e.rating = 2 THEN e.salary * 1.2"
+                + " ELSE e.salary * 1.01"
+                + " END"
+                + " FROM Employee e"
+                + " WHERE e.department.name = 'Engineering'";
 
         compare(jpql, e);
     }
@@ -290,7 +290,7 @@ public class TestCriteria extends SingleEMFTestCase {
         p.where(p.literal("Joe").member(p.get("nicknames")));
 
         String jpql = "select p from Person p " +
-                      " where 'Joe' MEMBER OF p.nicknames";
+                " where 'Joe' MEMBER OF p.nicknames";
         compare(jpql, p);
     }
 
@@ -300,7 +300,7 @@ public class TestCriteria extends SingleEMFTestCase {
         qdef.where(customer.get("status").equal(qdef.param("status")));
 
         String jpql = "select c from Customer c " +
-                      " where c.status = :status";
+                " where c.status = :status";
         compare(jpql, qdef, "status", 1);
     }
 
@@ -308,12 +308,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject c = qb.createQueryDefinition(CreditCard.class);
         DomainObject t = c.join("transactionHistory");
         c.select(t).where(c.get("holder").get("name").equal("John Doe")
-                .and(t.index().between(0, 9)));
-
+                                  .and(t.index().between(0, 9)));
 
         String jpql = "select t from CreditCard c JOIN c.transactionHistory t" +
-                      " where c.holder.name = 'John Doe' AND INDEX(t) " +
-                      " BETWEEN 0 AND 9";
+                " where c.holder.name = 'John Doe' AND INDEX(t) " +
+                " BETWEEN 0 AND 9";
 
         compare(jpql, c);
     }
@@ -322,9 +321,8 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject o = qb.createQueryDefinition(Order.class);
         o.where(o.get("lineItems").isEmpty());
 
-
         String jpql = "select o from Order o " +
-                      " where o.lineItems IS EMPTY";
+                " where o.lineItems IS EMPTY";
         compare(jpql, o);
     }
 
@@ -336,11 +334,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject customer = q2.addRoot(Customer.class);
 
         q1.where(goodCustomer.get("balanceOwned")
-                .lessThan(q2.select(customer.get("balanceOwned").avg())));
+                         .lessThan(q2.select(customer.get("balanceOwned").avg())));
 
         String jpql = "select c from Customer c "
-                    + " where c.balanceOwned < "
-                    + "(select AVG(c2.balanceOwned) from Customer c2)";
+                + " where c.balanceOwned < "
+                + "(select AVG(c2.balanceOwned) from Customer c2)";
         compare(jpql, q1);
     }
 
@@ -349,15 +347,14 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject customer = q.addRoot(Customer.class);
         DomainObject order = customer.join("orders");
         q.where(order.get("count").greaterThan(100))
-         .select(q.newInstance(Customer.class, customer.get("id"),
-                                               customer.get("status"),
-                                               order.get("count")));
-
+                .select(q.newInstance(Customer.class, customer.get("id"),
+                                      customer.get("status"),
+                                      order.get("count")));
 
         String jpql =
-            "SELECT NEW org.apache.openjpa.persistence.criteria.Customer"
-                + "(c.id, c.status, o.count)"
-                + " FROM Customer c JOIN c.orders o" + " WHERE o.count > 100";
+                "SELECT NEW org.apache.openjpa.persistence.criteria.Customer"
+                        + "(c.id, c.status, o.count)"
+                        + " FROM Customer c JOIN c.orders o" + " WHERE o.count > 100";
         compare(jpql, q);
     }
 
@@ -366,13 +363,13 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject v = q.addRoot(VideoStore.class);
         DomainObject i = v.join("videoInventory");
         q.where(v.get("location").get("zipCode").equal("94301").and(
-            i.value().greaterThan(0)));
+                i.value().greaterThan(0)));
         q.select(v.get("location").get("street"), i.key().get("title"), i
-            .value());
+                .value());
 
         String jpql = "SELECT v.location.street, KEY(v2).title, VALUE(v2)"
-                    + " FROM VideoStore v JOIN v.videoInventory v2"
-                    + " WHERE v.location.zipCode = '94301' AND VALUE(v2) > 0";
+                + " FROM VideoStore v JOIN v.videoInventory v2"
+                + " WHERE v.location.zipCode = '94301' AND VALUE(v2) > 0";
 
         compare(jpql, q);
     }
@@ -382,13 +379,13 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject customer = q.addRoot(Customer.class);
         q.select(customer.get("status"), customer.get("filledOrderCount").avg(),
                  customer.count())
-         .groupBy(customer.get("status"))
-         .having(customer.get("status").in(1, 2));
+                .groupBy(customer.get("status"))
+                .having(customer.get("status").in(1, 2));
 
         String jpql = "SELECT c.status, AVG(c.filledOrderCount), COUNT(c)"
-                    + " FROM Customer c"
-                    + " GROUP BY c.status"
-                    + " HAVING c.status IN (1, 2)";
+                + " FROM Customer c"
+                + " GROUP BY c.status"
+                + " HAVING c.status IN (1, 2)";
 
         compare(jpql, q);
     }
@@ -397,13 +394,13 @@ public class TestCriteria extends SingleEMFTestCase {
         QueryDefinition q = qb.createQueryDefinition();
         DomainObject customer = q.addRoot(Customer.class);
         q.select(customer.get("country"), customer.count())
-         .groupBy(customer.get("country"))
-         .having(customer.count().greaterThan(30));
+                .groupBy(customer.get("country"))
+                .having(customer.count().greaterThan(30));
 
         String jpql = "SELECT c.country, COUNT(c)"
-                    + " FROM Customer c"
-                    + " GROUP BY c.country"
-                    + " HAVING COUNT(c) > 30";
+                + " FROM Customer c"
+                + " GROUP BY c.country"
+                + " HAVING COUNT(c) > 30";
         compare(jpql, q);
     }
 
@@ -413,12 +410,12 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject order = customer.join("orders");
         DomainObject address = customer.join("address");
         q.where(address.get("state").equal("CA"))
-        .select(order)
-        .orderBy(order.get("quantity").desc(), order.get("totalcost"));
+                .select(order)
+                .orderBy(order.get("quantity").desc(), order.get("totalcost"));
         String jpql = "SELECT o"
-                    + " FROM Customer c JOIN c.orders o JOIN c.address a"
-                    + " WHERE a.state = 'CA'"
-                    + " ORDER BY o.quantity DESC, o.totalcost";
+                + " FROM Customer c JOIN c.orders o JOIN c.address a"
+                + " WHERE a.state = 'CA'"
+                + " ORDER BY o.quantity DESC, o.totalcost";
         compare(jpql, q);
     }
 
@@ -428,12 +425,12 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject order = customer.join("orders");
         DomainObject address = customer.join("address");
         q.where(address.get("state").equal("CA"))
-        .select(order.get("quantity"), address.get("zipCode"))
-        .orderBy(order.get("quantity").desc(), address.get("zipCode"));
+                .select(order.get("quantity"), address.get("zipCode"))
+                .orderBy(order.get("quantity").desc(), address.get("zipCode"));
         String jpql = "SELECT o.quantity, a.zipCode"
-                    + " FROM Customer c JOIN c.orders o JOIN c.address a"
-                    + " WHERE a.state = 'CA'"
-                    + " ORDER BY o.quantity DESC, a.zipCode";
+                + " FROM Customer c JOIN c.orders o JOIN c.address a"
+                + " WHERE a.state = 'CA'"
+                + " ORDER BY o.quantity DESC, a.zipCode";
         compare(jpql, q);
     }
 
@@ -442,14 +439,14 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject a = o.join("customer").join("address");
         SelectItem taxedCost = o.get("cost").times(1.08);
         o.select(o.get("quantity"), taxedCost, a.get("zipCode"))
-        .where(a.get("state").equal("CA")
-        .and(a.get("county").equal("Santa Clara")))
-        .orderBy(o.get("quantity"), taxedCost, a.get("zipCode"));
+                .where(a.get("state").equal("CA")
+                               .and(a.get("county").equal("Santa Clara")))
+                .orderBy(o.get("quantity"), taxedCost, a.get("zipCode"));
 
         String jpql = "SELECT o.quantity, o.cost*1.08 as o2, a.zipCode"
-                    + " FROM Order o JOIN o.customer c JOIN c.address a"
-                    + " WHERE a.state = 'CA' AND a.county = 'Santa Clara'"
-                    + " ORDER BY o.quantity, o2, a.zipCode";
+                + " FROM Order o JOIN o.customer c JOIN c.address a"
+                + " WHERE a.state = 'CA' AND a.county = 'Santa Clara'"
+                + " ORDER BY o.quantity, o2, a.zipCode";
 
         compare(jpql, o);
     }
@@ -465,11 +462,11 @@ public class TestCriteria extends SingleEMFTestCase {
         q1.selectDistinct(emp).where(q2.exists());
 
         String jpql = "SELECT DISTINCT e "
-                    + " FROM Employee e"
-                    + " WHERE EXISTS ("
-                            + " SELECT e2 "
-                            + " FROM Employee e2"
-                            + " WHERE e2 = e.spouse)";
+                + " FROM Employee e"
+                + " WHERE EXISTS ("
+                + " SELECT e2 "
+                + " FROM Employee e2"
+                + " WHERE e2 = e.spouse)";
 
         compare(jpql, q1);
     }
@@ -477,12 +474,12 @@ public class TestCriteria extends SingleEMFTestCase {
     public void testCreateSubquery() {
         DomainObject customer = qb.createQueryDefinition(Customer.class);
         DomainObject order =
-            qb.createSubqueryDefinition(customer.get("orders"));
+                qb.createSubqueryDefinition(customer.get("orders"));
         customer.where(order.select(order.get("cost").avg()).greaterThan(100));
 
         String jpql = "SELECT c "
-                    + " FROM Customer c"
-                    + " WHERE (SELECT AVG(o.cost) FROM c.orders o) > 100";
+                + " FROM Customer c"
+                + " WHERE (SELECT AVG(o.cost) FROM c.orders o) > 100";
 
         compare(jpql, customer);
     }
@@ -492,8 +489,8 @@ public class TestCriteria extends SingleEMFTestCase {
         q.where(q.type().in(Exempt.class, Contractor.class));
 
         String jpql = "SELECT e "
-            + " FROM Employee e"
-            + " WHERE TYPE(e) IN (Exempt, Contractor)";
+                + " FROM Employee e"
+                + " WHERE TYPE(e) IN (Exempt, Contractor)";
 
         compare(jpql, q);
     }
@@ -503,8 +500,8 @@ public class TestCriteria extends SingleEMFTestCase {
         q.where(q.get("country").in("USA", "UK", "France"));
 
         String jpql = "SELECT c "
-            + " FROM Customer c"
-            + " WHERE c.country IN ('USA', 'UK', 'France')";
+                + " FROM Customer c"
+                + " WHERE c.country IN ('USA', 'UK', 'France')";
         compare(jpql, q);
     }
 
@@ -512,17 +509,17 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject e = qb.createQueryDefinition(Employee.class);
         DomainObject f = e.join("frequentFlierPlan");
         Expression c =
-        e.generalCase().when(f.get("annualMiles").greaterThan(50000)).then(
-                "Platinum").when(f.get("annualMiles").greaterThan(25000)).then(
-                "Gold").elseCase("XYZ");
+                e.generalCase().when(f.get("annualMiles").greaterThan(50000)).then(
+                        "Platinum").when(f.get("annualMiles").greaterThan(25000)).then(
+                        "Gold").elseCase("XYZ");
         e.select(e.get("name"), f.get("name"), e.concat(c, e
-            .literal("Frequent Flyer")));
+                .literal("Frequent Flyer")));
 
         String jpql = "SELECT e.name, f.name, CONCAT("
-            + " CASE WHEN f.annualMiles > 50000 THEN 'Platinum'"
-            + " WHEN f.annualMiles > 25000 THEN 'Gold'"
-            + " ELSE 'XYZ' END, 'Frequent Flyer')"
-            + " FROM Employee e JOIN e.frequentFlierPlan f";
+                + " CASE WHEN f.annualMiles > 50000 THEN 'Platinum'"
+                + " WHEN f.annualMiles > 25000 THEN 'Gold'"
+                + " ELSE 'XYZ' END, 'Frequent Flyer')"
+                + " FROM Employee e JOIN e.frequentFlierPlan f";
 
         compare(jpql, e);
     }
@@ -530,14 +527,14 @@ public class TestCriteria extends SingleEMFTestCase {
     public void testCorrelatedSubquerySpecialCase1() {
         DomainObject o = qb.createQueryDefinition(Order.class);
         DomainObject a = qb.createSubqueryDefinition(o.get("customer").
-            get("accounts"));
+                get("accounts"));
         o.select(o)
-         .where(o.literal(10000).lessThan(a.select(a.get("balance")).all()));
+                .where(o.literal(10000).lessThan(a.select(a.get("balance")).all()));
 
         String jpql =
-            "select o from Order o" + " where 10000 < ALL "
-                + " (select a.balance from o.customer c "
-                + "join o.customer.accounts a)";
+                "select o from Order o" + " where 10000 < ALL "
+                        + " (select a.balance from o.customer c "
+                        + "join o.customer.accounts a)";
 
         compare(jpql, o);
     }
@@ -547,11 +544,11 @@ public class TestCriteria extends SingleEMFTestCase {
         DomainObject c = o.join("customer");
         DomainObject a = qb.createSubqueryDefinition(c.get("accounts"));
         o.select(o)
-         .where(o.literal(10000).lessThan(a.select(a.get("balance")).all()));
+                .where(o.literal(10000).lessThan(a.select(a.get("balance")).all()));
 
         String jpql = "select o from Order o JOIN o.customer c"
-                    + " where 10000 < ALL "
-                    + " (select a.balance from c.accounts a)";
+                + " where 10000 < ALL "
+                + " (select a.balance from c.accounts a)";
 
         compare(jpql, o);
     }
@@ -577,7 +574,7 @@ public class TestCriteria extends SingleEMFTestCase {
      * QueryDefinition.
      */
     void compare(String jpql, QueryDefinition q) {
-        compare(jpql, q, (Object[])null);
+        compare(jpql, q, (Object[]) null);
     }
 
     /**
@@ -585,7 +582,7 @@ public class TestCriteria extends SingleEMFTestCase {
      * If skip is null then execute both queries against the database, otherwise
      * compare them literally.
      */
-    void compare(String jpql, QueryDefinition q, Object...p) {
+    void compare(String jpql, QueryDefinition q, Object... p) {
         executeActually(jpql, q, p);
     }
 
@@ -595,7 +592,7 @@ public class TestCriteria extends SingleEMFTestCase {
      */
     private void compareLiterally(String jpql, QueryDefinition q) {
         String actual = qb.toJPQL(q);
-        if (!comparator.compare(jpql,actual))
+        if (!comparator.compare(jpql, actual))
             fail("\r\nExpected: [" + jpql + "]\r\nActual  : [" + actual + "]");
     }
 
@@ -603,7 +600,7 @@ public class TestCriteria extends SingleEMFTestCase {
      * Executes the given JPQL and QueryDefinition independently and compare
      * their results.
      */
-    private void executeActually(String jpql, QueryDefinition q, Object...p) {
+    private void executeActually(String jpql, QueryDefinition q, Object... p) {
         OpenJPAEntityManager em = emf.createEntityManager();
         List<?> criteriaResult = null;
         List<?> jpqlResult = null;
@@ -629,22 +626,61 @@ public class TestCriteria extends SingleEMFTestCase {
             assertEquals(criteriaResult.size(), jpqlResult.size());
         } else if (criteriaError != null && jpqlError == null) {
             fail("QueryDefinition generated invalid JPQL\r\n"
-                + "Criteria [" + qb.toJPQL(q) + "]\r\n"
-                + "error : " + criteriaError.getMessage());
+                         + "Criteria [" + qb.toJPQL(q) + "]\r\n"
+                         + "error : " + criteriaError.getMessage());
         } else if (criteriaError == null && jpqlError != null) {
             fail("Handcrafted JPQL is invalid \r\n"
-                    + "JPQL [" + jpql + "]\r\n"
-                    + "error : " + jpqlError.getMessage());
+                         + "JPQL [" + jpql + "]\r\n"
+                         + "error : " + jpqlError.getMessage());
         } else {
             compareLiterally(jpql, q);
         }
     }
-        void setParameters(Query q, Object...p) {
+
+    void setParameters(Query q, Object... p) {
         if (p == null)
             return;
         for (int i = 0; i < p.length; i += 2) {
-            q.setParameter(p[i].toString(), p[i+1]);
+            q.setParameter(p[i].toString(), p[i + 1]);
         }
+    }
+
+    public void testInCriteriaWithAnonymousParameters() {
+
+        OpenJPAEntityManager em = emf.createEntityManager();
+        CriteriaBuilder builder = em.getCriteriaBuilder();
+
+        CriteriaQuery<Customer> criteria = builder.createQuery(Customer.class);
+        Root<Customer> root = criteria.from(Customer.class);
+        ParameterExpression<String> p1 = builder.parameter(String.class);
+        ParameterExpression<String> p2 = builder.parameter(String.class);
+        // qdef.where(customer.get("status").equal(qdef.param("status")));
+        criteria.where(builder.equal(root.get("firstName"), p1), builder.equal(root.get("lastName"), p2));
+        assertEquals("SELECT * FROM Customer c WHERE (c.firstName = :param AND c.lastName = :param)",
+                     criteria.toString());
+        TypedQuery<Customer> query = em.createQuery(criteria);
+        Map<Object, Parameter<?>> declaredParameters = ((AbstractQuery<?>) query).getDeclaredParameters();
+        assertEquals(2, declaredParameters.size());
+    }
+
+    public void testInCriteriaWithCollection() {
+
+        OpenJPAEntityManager em = emf.createEntityManager();
+        CriteriaBuilder builder = em.getCriteriaBuilder();
+
+        CriteriaQuery<Customer> criteria = builder.createQuery(Customer.class);
+        Root<Customer> root = criteria.from(Customer.class);
+        criteria.where(root.get("status").in(builder.parameter(Collection.class)));
+
+        TypedQuery<Customer> query = em.createQuery(criteria);
+        System.err.println(query);
+        for (ParameterExpression parameter : criteria.getParameters()) {
+            query.setParameter(parameter, Arrays.asList(1L, 2L));
+        }
+
+        assertEquals("SELECT * FROM Customer c WHERE c.status IN (:param)", criteria.toString());
+        query.getResultList();
+        assertEquals("SELECT * FROM Customer c WHERE c.status IN (:param)", criteria.toString());
     }
 }
 
